@@ -1,1 +1,7 @@
 project_id = "igdvhuisqxyaimqjtqfq"
+
+[functions.scrape-prices]
+verify_jwt = false
+
+[functions.parse-prices]
+verify_jwt = false
