@@ -42,7 +42,7 @@ ${truncated}`;
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'qwen/qwen3.5-122b-a10b',
+        model: 'qwen/qwen2.5-7b-instruct',
         messages: [
           { role: 'system', content: 'Extract prices. Return valid JSON only. No markdown, no explanations.' },
           { role: 'user', content: prompt },
