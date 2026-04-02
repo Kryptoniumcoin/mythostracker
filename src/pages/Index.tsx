@@ -12,14 +12,16 @@ import { useToast } from "@/hooks/use-toast";
 const Index = () => {
   const [data, setData] = useState<PriceData | null>(null);
   const [loading, setLoading] = useState(false);
+  const [progress, setProgress] = useState("");
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
 
   const handleScan = async () => {
     setLoading(true);
     setError(null);
+    setProgress("Starting scan...");
     try {
-      const result = await fetchPrices();
+      const result = await fetchPrices((msg) => setProgress(msg));
       setData(result);
       toast({
         title: "Scan Complete",
@@ -34,12 +36,12 @@ const Index = () => {
       });
     } finally {
       setLoading(false);
+      setProgress("");
     }
   };
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
       <header className="border-b border-border bg-card">
         <div className="container mx-auto px-4 py-6">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
@@ -74,7 +76,6 @@ const Index = () => {
       </header>
 
       <main className="container mx-auto px-4 py-6 space-y-6">
-        {/* Retailer Status */}
         {data?.retailerStatuses && (
           <Card>
             <CardHeader className="pb-3">
@@ -86,7 +87,6 @@ const Index = () => {
           </Card>
         )}
 
-        {/* Error */}
         {error && (
           <Card className="border-destructive">
             <CardContent className="flex items-center gap-3 py-4">
@@ -96,22 +96,20 @@ const Index = () => {
           </Card>
         )}
 
-        {/* Loading */}
         {loading && (
           <Card>
             <CardContent className="flex flex-col items-center justify-center py-16 gap-4">
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
               <div className="text-center">
-                <p className="font-medium text-foreground">Scanning retailers...</p>
+                <p className="font-medium text-foreground">{progress || "Scanning..."}</p>
                 <p className="text-sm text-muted-foreground mt-1">
-                  This may take 1-2 minutes as we scrape multiple sites and analyze with AI.
+                  This may take 3-5 minutes as we scrape sites and analyze each with AI.
                 </p>
               </div>
             </CardContent>
           </Card>
         )}
 
-        {/* Results */}
         {!loading && data?.products && (
           <Tabs defaultValue="table">
             <div className="flex items-center justify-between mb-4">
@@ -151,7 +149,6 @@ const Index = () => {
           </Tabs>
         )}
 
-        {/* Empty state */}
         {!loading && !data && !error && (
           <Card>
             <CardContent className="flex flex-col items-center justify-center py-20 gap-4">
@@ -170,7 +167,6 @@ const Index = () => {
           </Card>
         )}
 
-        {/* Legend */}
         <div className="flex items-center gap-6 text-xs text-muted-foreground">
           <div className="flex items-center gap-1.5">
             <span className="w-3 h-3 rounded-full bg-price-down" />
