@@ -47,6 +47,9 @@ export default {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
+        "price-up": "hsl(var(--price-up))",
+        "price-down": "hsl(var(--price-down))",
+        "price-same": "hsl(var(--price-same))",
         sidebar: {
           DEFAULT: "hsl(var(--sidebar-background))",
           foreground: "hsl(var(--sidebar-foreground))",
