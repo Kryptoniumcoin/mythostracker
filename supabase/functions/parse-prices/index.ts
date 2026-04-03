@@ -76,7 +76,7 @@ ${truncated}`;
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'qwen/qwen3-32b:free',
+        model: 'qwen/qwen3.6-plus:free',
         messages: [
           { role: 'system', content: 'Extract Baby Brezza product prices. Return valid JSON only. No markdown, no explanations.' },
           { role: 'user', content: prompt },
