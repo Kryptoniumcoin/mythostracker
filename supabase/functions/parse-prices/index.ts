@@ -4,10 +4,8 @@ const corsHeaders = {
 };
 
 function extractAndParseJson(raw: string): { products: { name: string; price: number; currency?: string }[] } {
-  // Strip markdown
   let cleaned = raw.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim();
 
-  // Find JSON start
   const jsonStart = cleaned.search(/[\{\[]/);
   if (jsonStart === -1) throw new Error('No JSON found');
 
@@ -16,11 +14,8 @@ function extractAndParseJson(raw: string): { products: { name: string; price: nu
   const jsonEnd = cleaned.lastIndexOf(closeChar);
 
   if (jsonEnd <= jsonStart) {
-    // Truncated - try to repair
     cleaned = cleaned.substring(jsonStart);
-    // Remove trailing incomplete object/entry
     cleaned = cleaned.replace(/,\s*\{[^}]*$/, '');
-    // Close open brackets/braces
     const openBrackets = (cleaned.match(/\[/g) || []).length - (cleaned.match(/\]/g) || []).length;
     const openBraces = (cleaned.match(/\{/g) || []).length - (cleaned.match(/\}/g) || []).length;
     for (let i = 0; i < openBraces; i++) cleaned += '}';
@@ -29,7 +24,6 @@ function extractAndParseJson(raw: string): { products: { name: string; price: nu
     cleaned = cleaned.substring(jsonStart, jsonEnd + 1);
   }
 
-  // Fix common issues
   cleaned = cleaned
     .replace(/,\s*}/g, '}')
     .replace(/,\s*]/g, ']')
@@ -37,14 +31,8 @@ function extractAndParseJson(raw: string): { products: { name: string; price: nu
 
   const parsed = JSON.parse(cleaned);
 
-  // Normalize to { products: [...] }
-  if (Array.isArray(parsed)) {
-    return { products: parsed };
-  }
-  if (parsed.products && Array.isArray(parsed.products)) {
-    return parsed;
-  }
-  // If it's an object without products array, return empty
+  if (Array.isArray(parsed)) return { products: parsed };
+  if (parsed.products && Array.isArray(parsed.products)) return parsed;
   return { products: [] };
 }
 
@@ -56,9 +44,9 @@ Deno.serve(async (req) => {
   try {
     const { retailerName, content } = await req.json();
 
-    const NVIDIA_API_KEY = Deno.env.get('NVIDIA_API_KEY');
-    if (!NVIDIA_API_KEY) {
-      return new Response(JSON.stringify({ success: false, error: 'NVIDIA API key not configured' }), {
+    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
+    if (!LOVABLE_API_KEY) {
+      return new Response(JSON.stringify({ success: false, error: 'Lovable AI key not configured' }), {
         status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
@@ -69,40 +57,36 @@ Deno.serve(async (req) => {
       });
     }
 
-    const truncated = content.slice(0, 4000);
+    const truncated = content.slice(0, 6000);
 
     const prompt = `Extract ALL Baby Brezza products with prices from this ${retailerName} page content. Return JSON only:
 {"products":[{"name":"Product Name","price":123.45,"currency":"AED"}]}
-Rules: numeric prices only, use AED if currency unclear, convert USD prices noting original currency. Return ONLY the JSON object, no markdown.
+Rules: numeric prices only, use AED as currency. Return ONLY the JSON object, no markdown, no explanation.
 Content:
 ${truncated}`;
 
-    console.log(`Calling NVIDIA API for ${retailerName}...`);
+    console.log(`Calling Lovable AI for ${retailerName}...`);
 
-    const response = await fetch('https://integrate.api.nvidia.com/v1/chat/completions', {
+    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${NVIDIA_API_KEY}`,
+        'Authorization': `Bearer ${LOVABLE_API_KEY}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'qwen/qwen2.5-7b-instruct',
+        model: 'google/gemini-2.5-flash-lite',
         messages: [
-          { role: 'system', content: 'Extract prices. Return valid JSON only. No markdown, no explanations. Keep response compact.' },
+          { role: 'system', content: 'Extract Baby Brezza product prices. Return valid JSON only. No markdown, no explanations.' },
           { role: 'user', content: prompt },
         ],
-        max_tokens: 2048,
-        temperature: 0.1,
-        stream: false,
-        chat_template_kwargs: { enable_thinking: false },
+        response_format: { type: 'json_object' },
       }),
     });
 
     if (!response.ok) {
       const errText = await response.text();
-      console.error('NVIDIA API error:', response.status, errText);
-      return new Response(JSON.stringify({ success: false, error: `AI error: ${response.status}` }), {
-        status: response.status === 429 ? 429 : 500,
+      console.error('Lovable AI error:', response.status, errText);
+      return new Response(JSON.stringify({ success: true, retailer: retailerName, data: { products: [] } }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
