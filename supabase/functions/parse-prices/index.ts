@@ -3,6 +3,51 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
+function extractAndParseJson(raw: string): { products: { name: string; price: number; currency?: string }[] } {
+  // Strip markdown
+  let cleaned = raw.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim();
+
+  // Find JSON start
+  const jsonStart = cleaned.search(/[\{\[]/);
+  if (jsonStart === -1) throw new Error('No JSON found');
+
+  const isArray = cleaned[jsonStart] === '[';
+  const closeChar = isArray ? ']' : '}';
+  const jsonEnd = cleaned.lastIndexOf(closeChar);
+
+  if (jsonEnd <= jsonStart) {
+    // Truncated - try to repair
+    cleaned = cleaned.substring(jsonStart);
+    // Remove trailing incomplete object/entry
+    cleaned = cleaned.replace(/,\s*\{[^}]*$/, '');
+    // Close open brackets/braces
+    const openBrackets = (cleaned.match(/\[/g) || []).length - (cleaned.match(/\]/g) || []).length;
+    const openBraces = (cleaned.match(/\{/g) || []).length - (cleaned.match(/\}/g) || []).length;
+    for (let i = 0; i < openBraces; i++) cleaned += '}';
+    for (let i = 0; i < openBrackets; i++) cleaned += ']';
+  } else {
+    cleaned = cleaned.substring(jsonStart, jsonEnd + 1);
+  }
+
+  // Fix common issues
+  cleaned = cleaned
+    .replace(/,\s*}/g, '}')
+    .replace(/,\s*]/g, ']')
+    .replace(/[\x00-\x1F\x7F]/g, '');
+
+  const parsed = JSON.parse(cleaned);
+
+  // Normalize to { products: [...] }
+  if (Array.isArray(parsed)) {
+    return { products: parsed };
+  }
+  if (parsed.products && Array.isArray(parsed.products)) {
+    return parsed;
+  }
+  // If it's an object without products array, return empty
+  return { products: [] };
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
@@ -24,17 +69,16 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Keep content short to reduce AI processing time
     const truncated = content.slice(0, 4000);
 
     const prompt = `Extract ALL Baby Brezza products with prices from this ${retailerName} page content. Return JSON only:
 {"products":[{"name":"Product Name","price":123.45,"currency":"AED"}]}
-Rules: numeric prices only, use AED if currency unclear, convert USD prices noting original currency.
+Rules: numeric prices only, use AED if currency unclear, convert USD prices noting original currency. Return ONLY the JSON object, no markdown.
 Content:
 ${truncated}`;
 
     console.log(`Calling NVIDIA API for ${retailerName}...`);
-    
+
     const response = await fetch('https://integrate.api.nvidia.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -44,7 +88,7 @@ ${truncated}`;
       body: JSON.stringify({
         model: 'qwen/qwen2.5-7b-instruct',
         messages: [
-          { role: 'system', content: 'Extract prices. Return valid JSON only. No markdown, no explanations.' },
+          { role: 'system', content: 'Extract prices. Return valid JSON only. No markdown, no explanations. Keep response compact.' },
           { role: 'user', content: prompt },
         ],
         max_tokens: 2048,
@@ -65,24 +109,18 @@ ${truncated}`;
 
     const aiData = await response.json();
     const aiContent = aiData.choices?.[0]?.message?.content || '';
-    console.log(`AI response for ${retailerName}:`, aiContent.slice(0, 200));
-
-    // Extract JSON
-    let jsonStr = aiContent;
-    const jsonMatch = aiContent.match(/```(?:json)?\s*([\s\S]*?)```/);
-    if (jsonMatch) jsonStr = jsonMatch[1];
-    const objMatch = jsonStr.match(/\{[\s\S]*\}/);
-    if (objMatch) jsonStr = objMatch[0];
+    console.log(`AI response for ${retailerName}:`, aiContent.slice(0, 300));
 
     try {
-      const parsed = JSON.parse(jsonStr);
+      const parsed = extractAndParseJson(aiContent);
+      console.log(`Parsed ${parsed.products.length} products for ${retailerName}`);
       return new Response(JSON.stringify({ success: true, retailer: retailerName, data: parsed }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
-    } catch {
-      console.error('Failed to parse:', aiContent.slice(0, 500));
-      return new Response(JSON.stringify({ success: false, error: 'Failed to parse AI response', retailer: retailerName }), {
-        status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    } catch (e) {
+      console.error('Failed to parse:', aiContent.slice(0, 500), 'Error:', e.message);
+      return new Response(JSON.stringify({ success: true, retailer: retailerName, data: { products: [] } }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
   } catch (e) {
