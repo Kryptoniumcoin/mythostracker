@@ -31,6 +31,58 @@ interface ParsedProduct {
   currency?: string;
 }
 
+// Known Baby Brezza product keywords for fuzzy matching
+const PRODUCT_KEYWORDS: { key: string; keywords: string[] }[] = [
+  { key: 'formula-pro-advanced-wifi', keywords: ['formula', 'pro', 'advanced', 'wifi'] },
+  { key: 'formula-pro-advanced', keywords: ['formula', 'pro', 'advanced'] },
+  { key: 'formula-pro-mini', keywords: ['formula', 'pro', 'mini'] },
+  { key: 'formula-pro', keywords: ['formula', 'pro'] },
+  { key: 'bottle-washer-pro-black', keywords: ['bottle', 'washer', 'pro', 'black'] },
+  { key: 'bottle-washer-pro', keywords: ['bottle', 'washer', 'pro'] },
+  { key: 'sterilizer-dryer-advanced', keywords: ['steriliz', 'dryer', 'advanced'] },
+  { key: 'sterilizer-dryer-superfast', keywords: ['steriliz', 'superfast'] },
+  { key: 'sterilizer-dryer', keywords: ['steriliz', 'dryer'] },
+  { key: 'food-maker-deluxe', keywords: ['food', 'maker', 'deluxe'] },
+  { key: 'food-maker', keywords: ['food', 'maker'] },
+  { key: 'bottle-warmer-smart', keywords: ['bottle', 'warmer', 'smart', 'bluetooth'] },
+  { key: 'bottle-warmer-safe', keywords: ['safe', 'smart', 'bottle', 'warmer'] },
+  { key: 'instant-warmer', keywords: ['instant', 'water', 'warmer'] },
+  { key: 'descaler-tablets', keywords: ['descal', 'tablet'] },
+  { key: 'gift-card', keywords: ['gift', 'card'] },
+];
+
+// Display names for matched product keys
+const PRODUCT_DISPLAY_NAMES: Record<string, string> = {
+  'formula-pro-advanced-wifi': 'Formula Pro Advanced WiFi',
+  'formula-pro-advanced': 'Formula Pro Advanced',
+  'formula-pro-mini': 'Formula Pro Mini',
+  'formula-pro': 'Formula Pro',
+  'bottle-washer-pro-black': 'Bottle Washer Pro (Black)',
+  'bottle-washer-pro': 'Bottle Washer Pro',
+  'sterilizer-dryer-advanced': 'Sterilizer & Dryer Advanced',
+  'sterilizer-dryer-superfast': 'Superfast Sterilizer & Dryer',
+  'sterilizer-dryer': 'One Step Sterilizer & Dryer',
+  'food-maker-deluxe': 'Food Maker Deluxe',
+  'food-maker': 'Food Maker',
+  'bottle-warmer-smart': 'Smart Bottle & Breastmilk Warmer',
+  'bottle-warmer-safe': 'Safe & Smart Bottle Warmer',
+  'instant-warmer': 'Instant Water Warmer',
+  'descaler-tablets': 'Universal Descaler Tablets',
+  'gift-card': 'Gift Card',
+};
+
+function matchProductKey(name: string): string | null {
+  const lower = name.toLowerCase();
+
+  // Sort by number of keywords descending so more specific matches win
+  for (const { key, keywords } of PRODUCT_KEYWORDS) {
+    const allMatch = keywords.every(kw => lower.includes(kw));
+    if (allMatch) return key;
+  }
+
+  return null;
+}
+
 export async function fetchPrices(
   onProgress?: (msg: string) => void
 ): Promise<PriceData> {
@@ -57,7 +109,7 @@ export async function fetchPrices(
   const successfulScrapes = scrapeResult.results.filter((r: ScrapedRetailer) => r.success);
   log(`Scraped ${successfulScrapes.length} retailers successfully.`);
 
-  // Step 2: Parse each retailer individually (to avoid edge function timeout)
+  // Step 2: Parse each retailer individually
   const allRetailerProducts: Record<string, ParsedProduct[]> = {};
 
   for (const scrape of successfulScrapes) {
@@ -80,29 +132,42 @@ export async function fetchPrices(
     }
   }
 
-  // Step 3: Merge products across retailers
+  // Step 3: Merge products across retailers using fuzzy keyword matching
   const productMap = new Map<string, Product>();
 
   for (const [retailer, products] of Object.entries(allRetailerProducts)) {
     for (const p of products) {
-      const key = normalizeProductName(p.name);
+      const matchedKey = matchProductKey(p.name);
+      const key = matchedKey || normalizeProductName(p.name);
+      const displayName = matchedKey
+        ? PRODUCT_DISPLAY_NAMES[matchedKey] || p.name
+        : p.name;
+
       if (!productMap.has(key)) {
         productMap.set(key, {
-          name: p.name,
+          name: displayName,
           prices: {},
         });
       }
       const product = productMap.get(key)!;
-      product.prices[retailer] = {
-        price: p.price,
-        currency: p.currency || 'AED',
-        available: true,
-      };
+      // If this retailer already has a price for this product, keep the first one
+      if (!product.prices[retailer]) {
+        product.prices[retailer] = {
+          price: p.price,
+          currency: p.currency || 'AED',
+          available: true,
+        };
+      }
     }
   }
 
+  // Sort: products with more retailer matches first
+  const sortedProducts = Array.from(productMap.values()).sort(
+    (a, b) => Object.keys(b.prices).length - Object.keys(a.prices).length
+  );
+
   return {
-    products: Array.from(productMap.values()),
+    products: sortedProducts,
     scrapedAt: new Date().toISOString(),
     retailerStatuses,
   };

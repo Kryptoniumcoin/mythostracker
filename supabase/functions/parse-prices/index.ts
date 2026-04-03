@@ -5,6 +5,8 @@ const corsHeaders = {
 
 function extractAndParseJson(raw: string): { products: { name: string; price: number; currency?: string }[] } {
   let cleaned = raw.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim();
+  // Remove <think>...</think> blocks from reasoning models
+  cleaned = cleaned.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
 
   const jsonStart = cleaned.search(/[\{\[]/);
   if (jsonStart === -1) throw new Error('No JSON found');
@@ -44,9 +46,9 @@ Deno.serve(async (req) => {
   try {
     const { retailerName, content } = await req.json();
 
-    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
-    if (!LOVABLE_API_KEY) {
-      return new Response(JSON.stringify({ success: false, error: 'Lovable AI key not configured' }), {
+    const OPENROUTER_API_KEY = Deno.env.get('OPENROUTER_API_KEY');
+    if (!OPENROUTER_API_KEY) {
+      return new Response(JSON.stringify({ success: false, error: 'OpenRouter API key not configured' }), {
         status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
@@ -65,27 +67,28 @@ Rules: numeric prices only, use AED as currency. Return ONLY the JSON object, no
 Content:
 ${truncated}`;
 
-    console.log(`Calling Lovable AI for ${retailerName}...`);
+    console.log(`Calling OpenRouter API for ${retailerName}...`);
 
-    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+        'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'google/gemini-2.5-flash-lite',
+        model: 'qwen/qwen3.6-plus:free',
         messages: [
           { role: 'system', content: 'Extract Baby Brezza product prices. Return valid JSON only. No markdown, no explanations.' },
           { role: 'user', content: prompt },
         ],
-        response_format: { type: 'json_object' },
+        max_tokens: 4096,
+        temperature: 0.1,
       }),
     });
 
     if (!response.ok) {
       const errText = await response.text();
-      console.error('Lovable AI error:', response.status, errText);
+      console.error('OpenRouter API error:', response.status, errText);
       return new Response(JSON.stringify({ success: true, retailer: retailerName, data: { products: [] } }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
