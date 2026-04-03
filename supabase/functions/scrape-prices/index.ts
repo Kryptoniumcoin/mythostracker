@@ -4,12 +4,12 @@ const corsHeaders = {
 };
 
 const RETAILERS = [
-  { name: "Amazon AE", url: "https://www.amazon.ae/s?k=baby+brezza", domain: "amazon.ae" },
-  { name: "Mumzworld", url: "https://www.mumzworld.com/en/catalogsearch/result/?q=baby+brezza", domain: "mumzworld.com" },
+  { name: "Amazon AE", url: "https://www.amazon.ae/s?k=baby+brezza&i=baby", domain: "amazon.ae" },
+  { name: "Mumzworld", url: "https://www.mumzworld.com/en/collections/brand/baby-brezza", domain: "mumzworld.com" },
   { name: "Noon", url: "https://www.noon.com/uae-en/search/?q=baby+brezza", domain: "noon.com" },
-  { name: "Centerpoint", url: "https://www.centrepoint.com/ae/en/search?q=baby+brezza", domain: "centrepoint.com" },
-  { name: "Babyshop", url: "https://www.babyshop.com/ae/en/search?q=baby+brezza", domain: "babyshop.com" },
-  { name: "BabyBreza.me", url: "https://babybrezza.me/collections/all", domain: "babybrezza.me" },
+  { name: "Centerpoint", url: "https://www.centrepointstores.com/ae/en/search/?q=baby+brezza", domain: "centrepointstores.com" },
+  { name: "Babyshop", url: "https://www.babyshopstores.com/ae/en/search/?q=baby+brezza", domain: "babyshopstores.com" },
+  { name: "BabyBreza.me", url: "https://babybrezza.me/collections/all-products", domain: "babybrezza.me" },
 ];
 
 Deno.serve(async (req) => {
