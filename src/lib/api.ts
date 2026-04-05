@@ -33,40 +33,67 @@ interface ParsedProduct {
 
 // Known Baby Brezza product keywords for fuzzy matching
 const PRODUCT_KEYWORDS: { key: string; keywords: string[] }[] = [
+  // Formula line — order matters: most specific first
   { key: 'formula-pro-advanced-wifi', keywords: ['formula', 'pro', 'advanced', 'wifi'] },
-  { key: 'formula-pro-advanced', keywords: ['formula', 'pro', 'advanced'] },
+  { key: 'formula-pro-advanced-black', keywords: ['formula', 'pro', 'advanced', 'black'] },
+  { key: 'formula-pro-advanced-black', keywords: ['formula', 'pro', 'advanced', 'premium'] },
+  { key: 'formula-pro-advanced-white', keywords: ['formula', 'pro', 'advanced', 'white'] },
+  { key: 'formula-pro-advanced-white', keywords: ['formula', 'pro', 'advanced'] },
   { key: 'formula-pro-mini', keywords: ['formula', 'pro', 'mini'] },
-  { key: 'formula-pro', keywords: ['formula', 'pro'] },
+  { key: 'formula-pro-mini', keywords: ['formula', 'machine', 'portable'] },
+
+  // Bottle Washer
   { key: 'bottle-washer-pro-black', keywords: ['bottle', 'washer', 'pro', 'black'] },
-  { key: 'bottle-washer-pro', keywords: ['bottle', 'washer', 'pro'] },
-  { key: 'sterilizer-dryer-advanced', keywords: ['steriliz', 'dryer', 'advanced'] },
-  { key: 'sterilizer-dryer-superfast', keywords: ['steriliz', 'superfast'] },
-  { key: 'sterilizer-dryer', keywords: ['steriliz', 'dryer'] },
-  { key: 'food-maker-deluxe', keywords: ['food', 'maker', 'deluxe'] },
-  { key: 'food-maker', keywords: ['food', 'maker'] },
-  { key: 'bottle-warmer-smart', keywords: ['bottle', 'warmer', 'smart', 'bluetooth'] },
-  { key: 'bottle-warmer-safe', keywords: ['safe', 'smart', 'bottle', 'warmer'] },
+  { key: 'bottle-washer-pro-white', keywords: ['bottle', 'washer', 'pro', 'white'] },
+  { key: 'bottle-washer-pro-white', keywords: ['bottle', 'washer', 'pro'] },
+  { key: 'bottle-washer-pro-white', keywords: ['washer', 'steriliz', 'dryer', 'all'] },
+
+  // Sterilizer & Dryer
+  { key: 'sterilizer-dryer-advanced-black', keywords: ['steriliz', 'dryer', 'advanced', 'black'] },
+  { key: 'sterilizer-dryer-advanced-black', keywords: ['steriliser', 'dryer', 'advanced', 'black'] },
+  { key: 'sterilizer-dryer-advanced-white', keywords: ['steriliz', 'dryer', 'advanced', 'white'] },
+  { key: 'sterilizer-dryer-advanced-white', keywords: ['steriliz', 'dryer', 'advanced'] },
+  { key: 'sterilizer-dryer-advanced-white', keywords: ['steriliser', 'dryer', 'advanced'] },
+  { key: 'sterilizer-dryer-superfast', keywords: ['superfast', 'steriliz'] },
+  { key: 'sterilizer-dryer-superfast', keywords: ['super', 'fast', 'steriliz'] },
+  { key: 'sterilizer-dryer-superfast', keywords: ['10', 'minute', 'steriliz'] },
+  { key: 'sterilizer-dryer-dome', keywords: ['steriliz', 'dryer', 'dome'] },
+  { key: 'sterilizer-dryer-dome', keywords: ['one', 'step', 'steriliz', 'dryer'] },
+  { key: 'sterilizer-dryer-dome', keywords: ['steriliz', 'dryer', 'electric', 'steam'] },
+
+  // Warmers
+  { key: 'portable-bottle-warmer', keywords: ['portable', 'bottle', 'warmer'] },
+  { key: 'portable-bottle-warmer', keywords: ['portable', 'warmer'] },
+  { key: 'bottle-warmer-safe-smart', keywords: ['safe', 'smart', 'warmer'] },
+  { key: 'bottle-warmer-safe-smart', keywords: ['smart', 'bottle', 'warmer', 'bluetooth'] },
+  { key: 'bottle-warmer-safe-smart', keywords: ['smart', 'bottle', 'warmer', 'defroster'] },
+  { key: 'instant-warmer', keywords: ['instant', 'warmer'] },
   { key: 'instant-warmer', keywords: ['instant', 'water', 'warmer'] },
+
+  // Food
+  { key: 'food-maker-deluxe', keywords: ['food', 'maker', 'deluxe'] },
+  { key: 'food-maker-deluxe', keywords: ['food', 'maker'] },
+
+  // Accessories
   { key: 'descaler-tablets', keywords: ['descal', 'tablet'] },
   { key: 'gift-card', keywords: ['gift', 'card'] },
 ];
 
-// Display names for matched product keys
 const PRODUCT_DISPLAY_NAMES: Record<string, string> = {
   'formula-pro-advanced-wifi': 'Formula Pro Advanced WiFi',
-  'formula-pro-advanced': 'Formula Pro Advanced',
+  'formula-pro-advanced-white': 'Formula Pro Advanced (White)',
+  'formula-pro-advanced-black': 'Formula Pro Advanced (Black)',
   'formula-pro-mini': 'Formula Pro Mini',
-  'formula-pro': 'Formula Pro',
   'bottle-washer-pro-black': 'Bottle Washer Pro (Black)',
-  'bottle-washer-pro': 'Bottle Washer Pro',
-  'sterilizer-dryer-advanced': 'Sterilizer & Dryer Advanced',
+  'bottle-washer-pro-white': 'Bottle Washer Pro (White)',
+  'sterilizer-dryer-advanced-white': 'Sterilizer & Dryer Advanced (White)',
+  'sterilizer-dryer-advanced-black': 'Sterilizer & Dryer Advanced (Black)',
   'sterilizer-dryer-superfast': 'Superfast Sterilizer & Dryer',
-  'sterilizer-dryer': 'One Step Sterilizer & Dryer',
-  'food-maker-deluxe': 'Food Maker Deluxe',
-  'food-maker': 'Food Maker',
-  'bottle-warmer-smart': 'Smart Bottle & Breastmilk Warmer',
-  'bottle-warmer-safe': 'Safe & Smart Bottle Warmer',
-  'instant-warmer': 'Instant Water Warmer',
+  'sterilizer-dryer-dome': 'One Step Sterilizer & Dryer (Dome)',
+  'portable-bottle-warmer': 'Portable Bottle Warmer',
+  'bottle-warmer-safe-smart': 'Safe + Smart Bottle Warmer',
+  'instant-warmer': 'Instant Warmer',
+  'food-maker-deluxe': 'One Step Food Maker Deluxe',
   'descaler-tablets': 'Universal Descaler Tablets',
   'gift-card': 'Gift Card',
 };
