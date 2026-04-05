@@ -63,7 +63,11 @@ Deno.serve(async (req) => {
 
     const prompt = `Extract ALL Baby Brezza products with prices from this ${retailerName} page content. Return JSON only:
 {"products":[{"name":"Product Name","price":123.45,"currency":"AED"}]}
-Rules: numeric prices only, use AED as currency. Return ONLY the JSON object, no markdown, no explanation.
+Rules:
+- Include color variant in name (e.g. "Formula Pro Advanced White", "Formula Pro Advanced Black", "Bottle Washer Pro Black")
+- Numeric prices only, use AED as currency
+- Include ALL products even if out of stock (set price to 0 for out-of-stock items)
+- Return ONLY the JSON object, no markdown, no explanation
 Content:
 ${truncated}`;
 
