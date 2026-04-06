@@ -72,6 +72,7 @@ export async function fetchPrices(
     // Add delay between batches to respect rate limits
     if (i > 0) {
       await new Promise(r => setTimeout(r, 2000));
+    }
 
     const results = await Promise.all(
       batch.map(async (job) => {
