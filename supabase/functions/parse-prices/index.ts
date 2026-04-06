@@ -33,9 +33,14 @@ Deno.serve(async (req) => {
   try {
     const { productKey, retailerName, content } = await req.json();
 
-    const OPENROUTER_API_KEY = Deno.env.get('OPENROUTER_API_KEY');
-    if (!OPENROUTER_API_KEY) {
-      return new Response(JSON.stringify({ success: false, error: 'OpenRouter API key not configured' }), {
+    // Configurable AI endpoint - supports OpenClaw, OpenRouter, Ollama, LiteLLM, etc.
+    // Defaults to OpenRouter if AI_BASE_URL is not set
+    const AI_BASE_URL = Deno.env.get('AI_BASE_URL') || 'https://openrouter.ai/api/v1';
+    const AI_MODEL = Deno.env.get('AI_MODEL') || 'qwen/qwen3.6-plus:free';
+    const AI_API_KEY = Deno.env.get('AI_API_KEY') || Deno.env.get('OPENROUTER_API_KEY') || '';
+
+    if (!AI_API_KEY && !AI_BASE_URL.includes('localhost')) {
+      return new Response(JSON.stringify({ success: false, error: 'AI API key not configured. Set AI_API_KEY env var.' }), {
         status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
@@ -58,18 +63,25 @@ Rules:
 Content:
 ${truncated}`;
 
+    // Build auth headers - skip Authorization if no key (local mode)
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    };
+    if (AI_API_KEY) {
+      headers['Authorization'] = `Bearer ${AI_API_KEY}`;
+    }
+
+    const endpoint = `${AI_BASE_URL.replace(/\/$/, '')}/chat/completions`;
+
     // Retry with exponential backoff for rate limits
     let response: Response | null = null;
     const MAX_RETRIES = 4;
     for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
-      response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      response = await fetch(endpoint, {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
-          'Content-Type': 'application/json',
-        },
+        headers,
         body: JSON.stringify({
-          model: 'qwen/qwen3.6-plus:free',
+          model: AI_MODEL,
           messages: [
             { role: 'system', content: 'Extract the product price. Return valid JSON only. No markdown, no explanations.' },
             { role: 'user', content: prompt },
@@ -90,7 +102,7 @@ ${truncated}`;
 
     if (!response || !response.ok) {
       const errText = response ? await response.text() : 'No response';
-      console.error('OpenRouter API error:', response?.status, errText);
+      console.error('AI API error:', response?.status, errText);
       return new Response(JSON.stringify({ success: true, productKey, retailer: retailerName, data: { price: 0, currency: 'AED' } }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
