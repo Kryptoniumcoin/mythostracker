@@ -62,12 +62,17 @@ export async function fetchPrices(
 
   log(`Parsing ${parseJobs.length} product pages with AI...`);
 
-  // Process in batches of 4 to avoid rate limits
-  const BATCH_SIZE = 4;
+  // Process in batches of 2 with delays to avoid rate limits on free model
+  const BATCH_SIZE = 2;
   let completed = 0;
 
   for (let i = 0; i < parseJobs.length; i += BATCH_SIZE) {
     const batch = parseJobs.slice(i, i + BATCH_SIZE);
+
+    // Add delay between batches to respect rate limits
+    if (i > 0) {
+      await new Promise(r => setTimeout(r, 2000));
+    }
 
     const results = await Promise.all(
       batch.map(async (job) => {

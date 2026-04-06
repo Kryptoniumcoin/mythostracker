@@ -58,26 +58,39 @@ Rules:
 Content:
 ${truncated}`;
 
-    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'qwen/qwen3.6-plus:free',
-        messages: [
-          { role: 'system', content: 'Extract the product price. Return valid JSON only. No markdown, no explanations.' },
-          { role: 'user', content: prompt },
-        ],
-        max_tokens: 256,
-        temperature: 0.1,
-      }),
-    });
+    // Retry with exponential backoff for rate limits
+    let response: Response | null = null;
+    const MAX_RETRIES = 4;
+    for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+      response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'qwen/qwen3.6-plus:free',
+          messages: [
+            { role: 'system', content: 'Extract the product price. Return valid JSON only. No markdown, no explanations.' },
+            { role: 'user', content: prompt },
+          ],
+          max_tokens: 256,
+          temperature: 0.1,
+        }),
+      });
 
-    if (!response.ok) {
-      const errText = await response.text();
-      console.error('OpenRouter API error:', response.status, errText);
+      if (response.status === 429 && attempt < MAX_RETRIES) {
+        const delay = Math.pow(2, attempt + 1) * 1000 + Math.random() * 1000;
+        console.log(`Rate limited for ${productKey}@${retailerName}, retrying in ${Math.round(delay)}ms (attempt ${attempt + 1}/${MAX_RETRIES})`);
+        await new Promise(r => setTimeout(r, delay));
+        continue;
+      }
+      break;
+    }
+
+    if (!response || !response.ok) {
+      const errText = response ? await response.text() : 'No response';
+      console.error('OpenRouter API error:', response?.status, errText);
       return new Response(JSON.stringify({ success: true, productKey, retailer: retailerName, data: { price: 0, currency: 'AED' } }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
